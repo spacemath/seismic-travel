@@ -86,12 +86,42 @@ a {
 	fill: green;
 }
 
+.rock-region {
+	cursor: pointer;
+}
+
+.rock-region-adjust-density {
+	cursor: ns-resize;
+}
+
 .rock-boundary {
-	fill: black;
-	opacity: 0.8;
+	fill: #444;
+	opacity: 0.9;
 	cursor: col-resize;
+}
+
+.rock-boundary-text {
+	text-anchor: middle;
+	fill: white;
+}
+
+.unselectable {
+   -moz-user-select: -moz-none;
+   -khtml-user-select: none;
+   -webkit-user-select: none;
+
+   /*
+     Introduced in IE 10.
+     See http://ie.microsoft.com/testdrive/HTML5/msUserSelect/
+   */
+   -ms-user-select: none;
+   user-select: none;
 }
 
 .draggable {
 	cursor: move;
+}
+
+.d3clickable {
+	cursor: pointer;
 }
