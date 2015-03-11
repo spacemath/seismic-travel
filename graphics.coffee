@@ -3,13 +3,14 @@
 # info about 8k vert d
 # superscript for m3
 # use svg group (g) for rock regions
-# spec rock boundary width
-# will it work if we spec any number of widths?
-# *** make sure api works
+# spec rock boundary width and color
+# Total travel time
 
 # Math functions
 round = Math.round
 round1 = (x) -> round(10*x)/10
+
+# Class definitions
 
 class Canvas
 	
@@ -54,7 +55,6 @@ class Canvas
 		z
 		
 	append: (obj) -> @canvas.append(obj)
-	
 
 
 class Rock
@@ -188,7 +188,7 @@ class RockRegionContent
 		@s "width", round(@w)+" km"
 		@s "speed", round1(@speed)+" km/s"
 		@s "time", round1(@time)+" s"
-
+		
 	t: (y, dy=0) -> new RockRegionText(canvas: @canvas, y: y, dy: "#{dy}em")
 	
 	s: (f, v) -> @text[f].set @center, v
@@ -224,7 +224,7 @@ class VSlider
 
 class RockBoundary extends Rectangle
 	
-	width: 2
+	width: 4
 	
 	constructor: (@spec) ->
 		@spec.w = @width
@@ -278,29 +278,5 @@ class RockRegionText extends Text
 
 
 
-# Exports
+# Export rock simulation
 $blab.Rock = Rock
-
-#------ Code for eval nodes --------#
-
-# P-wave speed and time
-model =
-	speed: (density) ->  1.5 * sqrt(1200/density)
-	time: (width, speed) -> width/speed
-
-densityRange = [1200, 3700]
-
-# Map density to color
-colorMap = (density) ->
-	[dMin, dMax] = densityRange
-	x = 250 - round(150*(density-dMin)/(dMax-dMin))
-	"rgb(#{x}, #{x-40}, #{x-80})"
-
-new $blab.Rock
-	widths: [50, 90, 70, 90]
-	thickness: 8
-	densities: [2250, 1700, 1200, 2600]
-	densityRange: densityRange
-	colorMap: colorMap
-	model: model
-	

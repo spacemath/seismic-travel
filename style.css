@@ -98,7 +98,7 @@ a {
 }
 
 .rock-boundary {
-	fill: #444;
+	fill: #f80;
 	opacity: 0.9;
 	cursor: col-resize;
 }
