@@ -128,3 +128,7 @@ a {
 .d3clickable {
 	cursor: pointer;
 }
+
+#total-time-container {
+	margin-left: 0px;
+}

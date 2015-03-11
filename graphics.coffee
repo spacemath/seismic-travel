@@ -1,10 +1,7 @@
-#TODO
-# 0, 300 km
-# info about 8k vert d
-# superscript for m3
-# use svg group (g) for rock regions
-# spec rock boundary width and color
-# Total travel time
+# TODO
+# Info about 8km vertical distance.
+# Superscript for m3
+# Use svg group (g) for rock regions
 
 # Math functions
 round = Math.round
@@ -62,7 +59,7 @@ class Rock
 	containerSelector: "#graphics"
 	width: 850
 	height: 300
-	margin: {top: 30, right: 20, bottom: 30, left: 20}
+	margin: {top: 30, right: 30, bottom: 50, left: 25}
 	buffer: 30
 	
 	constructor: (@spec) ->
@@ -90,8 +87,12 @@ class Rock
 					density: density
 					densityRange: @densityRange
 					colorMap: @colorMap
+					callback: => @setTotalTime()
 		
 		@boundaries = (new RockBoundary(canvas: @canvas, idx: idx, callback: setBoundary) for region, idx in @regions[0..-2])
+		
+		@endLabel 0
+		@endLabel @totalWidth()
 		
 		@draw()
 		
@@ -102,17 +103,28 @@ class Rock
 		@widths[idx..idx+1] = [x-xMin, xMax-x] if x>xMin+@buffer and x<xMax-@buffer
 		@draw()
 		
+	endLabel: (x) ->
+		y = @canvas.yDomain[1]
+		d = new Text(canvas: @canvas, y: y, dy: "1.2em")
+		d.set(x, round(x)+ " km")
+		
 	draw: ->
 		c = @cumulativeWidths()
 		xr = (idx) -> if idx>0 then c[idx-1] else 0
 		region.set(xr(idx), @widths[idx]) for region, idx in @regions
 		boundary.set(c[idx]) for boundary, idx in @boundaries
+		@setTotalTime()
 		
 	cumulativeWidths: ->
 		w = 0
 		(w += width for width in @widths)
 		
 	totalWidth: -> @cumulativeWidths()[-1..][0]
+	
+	setTotalTime: ->
+		t = 0
+		t += region.time for region in @regions if @regions
+		$("#total-time").text round(t)+" seconds"
 
 
 class Rectangle
@@ -141,7 +153,7 @@ class Rectangle
 class RockRegion extends Rectangle
 	
 	constructor: (@spec) ->
-		{@canvas, @model, @density, @densityRange, @colorMap} = @spec
+		{@canvas, @model, @density, @densityRange, @colorMap, @callback} = @spec
 		super @spec
 		@content = new RockRegionContent {@canvas}
 		@setDensity @spec.density
@@ -152,6 +164,7 @@ class RockRegion extends Rectangle
 		@speed = @model.speed(@density)
 		@time = @model.time(@w, @speed)
 		@content?.set {@x, @w, @density, @speed, @time}
+		@callback()
 		
 	yToDensity: (y) ->
 		[dMin, dMax] = @densityRange
@@ -238,7 +251,7 @@ class RockBoundary extends Rectangle
 	set: (x, @w) ->
 		@w ?= @width
 		super (x-@w/2), @w
-		@distance?.set(x, Math.round(x))
+		@distance?.set(x, Math.round(x)+" km")
 		
 	setDraggable: ->
 		@rect.call(
@@ -246,6 +259,7 @@ class RockBoundary extends Rectangle
 			.drag()
 			.on("drag", => @spec.callback(@spec.idx, @canvas.invertX(d3.event.x)))
 		)
+		
 
 
 class Text
@@ -277,6 +291,5 @@ class RockRegionText extends Text
 	textClass: "rock-region-text unselectable"
 
 
-
 # Export rock simulation
-$blab.Rock = Rock
+$blab.rock = (spec) -> new Rock spec

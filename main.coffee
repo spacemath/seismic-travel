@@ -14,7 +14,7 @@ colorMap = (density) ->
     "rgb(#{x}, #{x-40}, #{x-80})"
 
 # Run simulation
-new $blab.Rock  #;
+$blab.rock  #;
     widths: [50, 90, 70, 90]
     thickness: 8
     densities: [2250, 1700, 1200, 2600]
