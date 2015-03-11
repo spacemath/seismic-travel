@@ -62,37 +62,29 @@ class RockRegions
 		@widths = [25, 50, 75, 150]
 		@fills = ["red", "#f66", "#faa", "#fcc"]
 		
-		moveBoundary = (idx, x) => @moveBoundary(idx, x)
+		setBoundary = (idx, x) => @setBoundary(idx, x)
 		
 		@regions = (new RockRegion(rock: @rock, fill: fill) for fill in @fills)
-		@boundaries = (new RockBoundary(rock: @rock, idx: idx, callback: moveBoundary) for region, idx in @regions[0..-2])
+		@boundaries = (new RockBoundary(rock: @rock, idx: idx, callback: setBoundary) for region, idx in @regions[0..-2])
 		
 		@draw()
 		
-	moveBoundary: (idx, x) ->
+	setBoundary: (idx, x) ->
 		c = @cumulativeWidths()
 		xMin = if idx>0 then c[idx-1] else 0
 		xMax = c[idx+1]
 		@widths[idx..idx+1] = [x-xMin, xMax-x] if x>xMin and x<xMax
 		@draw()
 		
+	draw: ->
+		c = @cumulativeWidths()
+		xr = (idx) -> if idx>0 then c[idx-1] else 0
+		region.set(xr(idx), @widths[idx]) for region, idx in @regions
+		boundary.set(c[idx]) for boundary, idx in @boundaries
+		
 	cumulativeWidths: ->
 		w = 0
 		(w += width for width in @widths)
-		
-	draw: ->
-		
-		x = 0
-		for region, idx in @regions
-			w = @widths[idx]
-			region.set(x, w)
-			x += w
-		
-		x = 0
-		for boundary, idx in @boundaries
-			w = @widths[idx]
-			x += w
-			boundary.set(x)
 
 
 class RockRectangle
