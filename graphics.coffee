@@ -1,26 +1,26 @@
 #TODO
-# brown rock
 # 0, 300 km
 # info about 8k vert d
+# superscript for m3
+# use svg group (g) for rock regions
+# spec rock boundary width
+# will it work if we spec any number of widths?
+# *** make sure api works
 
+# Math functions
+round = Math.round
+round1 = (x) -> round(10*x)/10
 
-class Rock
+class Canvas
 	
-	width: 850
-	height: 300
-	margin: {top: 30, right: 20, bottom: 30, left: 20}
-	xDomain: [0, 300]
-	yDomain: [0, 8]
-	
-	constructor: (@callback) ->
-		@create()
-		@callback this
+	constructor: (@spec) ->
 		
-	create: ->
+		{@containerSelector, @width, @height, @margin, @xDomain, @yDomain} = @spec
 		
-		@graphics = d3.select "#graphics"
+		@graphics = d3.select @containerSelector
 		
 		@graphics.selectAll("svg").remove()
+		
 		@svg = @graphics.append("svg")
 			.attr('width', @width)
 			.attr('height', @height)
@@ -29,7 +29,7 @@ class Rock
 	
 		@h = @height - @margin.top - @margin.bottom
 			
-		@rock = @svg.append("g")
+		@canvas = @svg.append("g")
 			.attr("transform", "translate(#{@margin.left}, #{@margin.top})")
 			.attr("width", @w)
 			.attr("height", @h)
@@ -41,10 +41,8 @@ class Rock
 		@my = d3.scale.linear()
 			.domain(@yDomain)
 			.range([0, @h])
-			
-		new RockRegions rock: this
 		
-		$("#map-preloader").remove()
+		$("#graphics-preloader").remove()
 		
 	invertX: (x) -> @limit @mx.invert(x), @xDomain
 	
@@ -55,24 +53,45 @@ class Rock
 		return d[0] if z<d[0]
 		z
 		
-	append: (obj) -> @rock.append(obj)
+	append: (obj) -> @canvas.append(obj)
 	
 
-class RockRegions
+
+class Rock
 	
+	containerSelector: "#graphics"
+	width: 850
+	height: 300
+	margin: {top: 30, right: 20, bottom: 30, left: 20}
 	buffer: 30
 	
 	constructor: (@spec) ->
 		
-		{@rock} = @spec
+		{@widths, @thickness, @densities, @densityRange, @colorMap, @model} = @spec
 		
-		@widths = [50, 90, 70, 90]
-		@densities = [2250, 1700, 1200, 2600]
-		#@fills = ["red", "#f66", "#faa", "#fcc"]
+		@xDomain = [0, @totalWidth()]
+		@yDomain = [0, @thickness]
+		
+		@canvas = new Canvas
+			containerSelector: @containerSelector
+			width: @width
+			height: @height
+			margin: @margin
+			xDomain: @xDomain
+			yDomain: @yDomain
+		
 		setBoundary = (idx, x) => @setBoundary(idx, x)
 		
-		@regions = (new RockRegion(rock: @rock, density: density) for density in @densities)
-		@boundaries = (new RockBoundary(rock: @rock, idx: idx, callback: setBoundary) for region, idx in @regions[0..-2])
+		@regions =
+			for density in @densities
+				new RockRegion
+					canvas: @canvas
+					model: @model
+					density: density
+					densityRange: @densityRange
+					colorMap: @colorMap
+		
+		@boundaries = (new RockBoundary(canvas: @canvas, idx: idx, callback: setBoundary) for region, idx in @regions[0..-2])
 		
 		@draw()
 		
@@ -92,22 +111,24 @@ class RockRegions
 	cumulativeWidths: ->
 		w = 0
 		(w += width for width in @widths)
+		
+	totalWidth: -> @cumulativeWidths()[-1..][0]
 
 
-class RockRectangle
+class Rectangle
 	
 	constructor: (@spec) ->
 		
-		{@rock, @x, @w} = @spec
+		{@canvas, @x, @w} = @spec
 		@x = 1 unless @x
 		@w = 1 unless @w
 		
-		@mx = @rock.mx
-		@my  = @rock.my
+		@mx = @canvas.mx
+		@my  = @canvas.my
 		
-		@rect = @rock.append("rect")
+		@rect = @canvas.append("rect")
 			.attr("y", @my(0))
-			.attr("height", @my(@rock.yDomain[1]))
+			.attr("height", @my(@canvas.yDomain[1]))
 			.attr("class", "unselectable")
 			
 		@set @x, @w
@@ -117,150 +138,129 @@ class RockRectangle
 		@rect.attr "width", @mx(@w) if @w
 
 
-class RockRegion extends RockRectangle
-	
-	# TODO: use group
+class RockRegion extends Rectangle
 	
 	constructor: (@spec) ->
+		{@canvas, @model, @density, @densityRange, @colorMap} = @spec
 		super @spec
-		
-		rock = @spec.rock
-		
-		@rect.attr "class", "rock-region unselectable"
-		
-		@adjust = false
-		@rect.on "mousedown", =>
-			@adjust = true #not @adjust
-			#if @adjust
-			@rect.attr "class", "rock-region-adjust-density unselectable"
-			#else
-			#	@rect.attr "class", "rock-region unselectable"
-			foo()
-		@rect.on "mouseup", =>
-			@adjust = false
-			@rect.attr "class", "rock-region unselectable"
-		@rect.on "mousemove", => foo()
-		@rect.on "mouseleave", (evt) =>
-			if @adjust
-				@adjust = d3.event.toElement.tagName is "text"
-				if not @adjust
-					@rect.attr "class", "rock-region unselectable"
-		
-		@rect.append("svg:title").text("To adjust density, click and move up/down.")
-			
-		foo = =>
-			return unless @adjust
-			coord = d3.mouse(@rect[0][0])
-			y = @rock.invertY(coord[1])/@rock.yDomain[1]
-			density = 10*Math.round(290*(1-y)) + 1000
-			density = 1200 if density<1200
-			density = 3700 if density>3700
-			@setDensity density
-		
-		
-		@densityText = new RockRegionText(rock: rock, y: 1, dy: "0em") #, click: (-> cb()))
-		
+		@content = new RockRegionContent {@canvas}
 		@setDensity @spec.density
-		
-		text = (y, dy=0) -> new RockRegionText(rock: rock, y: y, dy: "#{dy}em")
-		
-		@dUnit = text 1, 1
-		@widthText = text 3
-		@speedText = text 4
-		@timeText = text 5
-		
-	model: ->
-		
-		# @density and @w set
-		
-		@speed = 1.5 * Math.sqrt(1200/@density)
-		@time = @w/@speed
-		
-		
+		new VSlider(rect: @rect, callback: (y) => @yToDensity(y))
+	
 	set: (x=@x, w=@w) ->
-		@x = x
-		@w = w
-		super @x, @w
-		center = @x+@w/2
+		super x, w
+		@speed = @model.speed(@density)
+		@time = @model.time(@w, @speed)
+		@content?.set {@x, @w, @density, @speed, @time}
 		
-		@model()
-		
-		#width = @w
-		#speed = 1.5 * Math.sqrt(1200/@density)
-		#time = width/speed
-		
-		rnd = Math.round
-		rnd1 = (x) -> rnd(10*x)/10
-		
-		set = (t, v, rnd, unit) ->
-			t?.set center, rnd(v)+" #{unit ? ''}"
-			
-		set @densityText, @density, rnd
-		
-		#@densityText?.set center, rnd(@density)
-		@dUnit?.set center, "kg/m3"  # TODO: superscript m3
-		
-		set @widthText, @w, rnd, "km"
-		set @speedText, @speed, rnd1, "km/s"
-		set @timeText, @time, rnd1, "s"
-		#@widthText?.set center, rnd(@w)+" km"
-		#@speedText?.set center, rnd1(@speed)+" km/s"
-		#@timeText?.set center, rnd1(@time)+" s"
+	yToDensity: (y) ->
+		[dMin, dMax] = @densityRange
+		b = 200  # Buffer
+		y1 = @canvas.invertY(y)/@canvas.yDomain[1]
+		density = 10*round((dMax-dMin+2*b)/10*(1-y1)) + dMin - b
+		density = dMin if density<dMin
+		density = dMax if density>dMax
+		@setDensity density
 		
 	setDensity: (@density) ->
-		x = 250 - Math.round(150*(@density-1200)/2500)
-#		x = 200 - 200*(@density-1200)/2500
-		@fill = "rgb(#{x}, #{x-40}, #{x-80})"
-#		@fill = "rgb(255, #{x}, #{x})"
-		@rect.attr "fill", @fill
+		@rect.attr "fill", @colorMap(@density)
 		@set()
-		
 
-class RockBoundary extends RockRectangle
+
+class RockRegionContent
 	
-	width: 4
+	constructor: (@spec) ->
+		
+		{@canvas} = @spec
+		
+		@text =
+			density: @t 2
+			dUnit: @t 2, 1
+			width: @t 4
+			speed: @t 5
+			time: @t 6
+	
+	set: (@vals) ->
+		{@x, @w, @density, @speed, @time} = @vals
+		@center = @x + @w/2
+		@s "density", round(@density)
+		@s "dUnit", "kg/m3"  
+		@s "width", round(@w)+" km"
+		@s "speed", round1(@speed)+" km/s"
+		@s "time", round1(@time)+" s"
+
+	t: (y, dy=0) -> new RockRegionText(canvas: @canvas, y: y, dy: "#{dy}em")
+	
+	s: (f, v) -> @text[f].set @center, v
+
+
+class VSlider
+	
+	constructor: (@spec) ->
+		
+		{@rect, @callback} = @spec
+		
+		@setAdjust false
+		
+		@rect.on "mousedown", => @setAdjust true
+		
+		@rect.on "mouseup", => @setAdjust false
+		
+		@rect.on "mousemove", => (@set() if @adjust)
+		
+		@rect.on "mouseleave", => @setAdjust false
+		# tag = d3.event.toElement.tagName - check if tag is text - now handle via CSS pointer-events
+		
+		@rect.append("svg:title").text("To adjust density, click and move up/down.")
+		
+	setAdjust: (@adjust) ->
+		@rect.attr "class", (if @adjust then "rock-region-adjust-density unselectable" else "rock-region unselectable")
+		@set() if @adjust
+		
+	set: =>
+		coord = d3.mouse(@rect[0][0])
+		@callback coord[1]
+
+
+class RockBoundary extends Rectangle
+	
+	width: 2
 	
 	constructor: (@spec) ->
 		@spec.w = @width
 		super @spec
 		@rect.attr "class", "rock-boundary"
-		rock = @spec.rock
-		@distance = new Text(rock: rock, y: 8, dy: "1.2em")  # TODO 8 here is thickness - get from somewhere?
-#		@distance = new RockBoundaryDistance {rock: @spec.rock}
+		canvas = @spec.canvas
+		y =  canvas.yDomain[1]
+		@distance = new Text(canvas: canvas, y: y, dy: "1.2em")
 		@setDraggable()
 		
 	set: (x, @w) ->
 		@w ?= @width
 		super (x-@w/2), @w
 		@distance?.set(x, Math.round(x))
-#		@distance?.set x
 		
 	setDraggable: ->
 		@rect.call(
 			d3.behavior
 			.drag()
-			.on("drag", => @spec.callback(@spec.idx, @rock.invertX(d3.event.x)))
+			.on("drag", => @spec.callback(@spec.idx, @canvas.invertX(d3.event.x)))
 		)
 
 
 class Text
 	
-	textClass: "rock-boundary-text"
+	textClass: "rock-text"
 	
 	constructor: (@spec) ->
 		
-		{@rock} = @spec  # TODO: more here
-		@mx = @rock.mx
-		@my = @rock.my
+		{@canvas} = @spec
+		@mx = @canvas.mx
+		@my = @canvas.my
 		
-		#console.log "ROCK", @rock
-		@text = @rock.append("text")
+		@text = @canvas.append("text")
 			.attr("y", @my(@spec.y))
-			.attr("class", @textClass)  # TODO: not unsel for xlabels
-		
-		#if @spec.click
-		#	@text.on("click", => @spec.click())
-			#@text.attr("class", "rock-boundary-text unselectable")
+			.attr("class", @textClass)
 		
 		@text.attr("dy", @spec.dy) if @spec.dy
 		
@@ -270,13 +270,37 @@ class Text
 		
 	setText: (@t) ->
 		@text.text(@t)
-		
-		
+
+
 class RockRegionText extends Text
 	
-	textClass: "rock-boundary-text unselectable rock-region"  # TODO: change cursor
+	textClass: "rock-region-text unselectable"
 
 
 
 # Exports
 $blab.Rock = Rock
+
+#------ Code for eval nodes --------#
+
+# P-wave speed and time
+model =
+	speed: (density) ->  1.5 * sqrt(1200/density)
+	time: (width, speed) -> width/speed
+
+densityRange = [1200, 3700]
+
+# Map density to color
+colorMap = (density) ->
+	[dMin, dMax] = densityRange
+	x = 250 - round(150*(density-dMin)/(dMax-dMin))
+	"rgb(#{x}, #{x-40}, #{x-80})"
+
+new $blab.Rock
+	widths: [50, 90, 70, 90]
+	thickness: 8
+	densities: [2250, 1700, 1200, 2600]
+	densityRange: densityRange
+	colorMap: colorMap
+	model: model
+	
