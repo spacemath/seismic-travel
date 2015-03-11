@@ -36,6 +36,7 @@ a {
 	color: #dd0;
 }
 
+/*
 #overlay-outer {
 	position: relative;
 	height: 455px;
@@ -44,6 +45,7 @@ a {
 .overlay {
 	position: absolute;
 }
+*/
 
 #computation-code {
     margin-bottom: 20px;
@@ -79,6 +81,16 @@ a {
 }
 
 /* d3 */
+
+#rect {
+	fill: green;
+}
+
+.rock-boundary {
+	fill: black;
+	opacity: 0.8;
+	cursor: col-resize;
+}
 
 .draggable {
 	cursor: move;

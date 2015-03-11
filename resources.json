@@ -1,0 +1,6 @@
+[
+	"http://puzlet.org/puzlet/js/d3.min.js",
+	"code-widget.coffee",
+	"graphics.coffee",
+    "main.coffee"
+]
