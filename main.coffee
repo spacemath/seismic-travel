@@ -6,8 +6,8 @@ model =
     time: (width, speed) -> width/speed
 
 # Computation example
-density = 2600  # kg/m<sup>3</sup>
-distance = 90  # km
+density = 2600  # $kg/m^3$
+distance = 90  # $km$
 speed = model.speed density
 time = model.time distance, speed
 
