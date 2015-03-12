@@ -5,6 +5,12 @@ model =
     speed: (density) -> 1.5*sqrt(1200/density)
     time: (width, speed) -> width/speed
 
+# Computation example
+density = 2600  # $kg/m^3$
+distance = 90  # km
+speed = model.speed density
+time = model.time distance, speed
+
 # Density range and color mapping
 densityRange = [1200, 3700]
 colorMap = (density) ->
