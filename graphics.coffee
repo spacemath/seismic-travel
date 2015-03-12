@@ -237,7 +237,7 @@ class VSlider
 
 class RockBoundary extends Rectangle
 	
-	width: 4
+	width: 20
 	
 	constructor: (@spec) ->
 		@spec.w = @width
@@ -248,8 +248,9 @@ class RockBoundary extends Rectangle
 		@distance = new Text(canvas: canvas, y: y, dy: "1.2em")
 		@setDraggable()
 		
-	set: (x, @w) ->
-		@w ?= @width
+	set: (x, w) ->
+		# w not used - fixed boundary width
+		@w = @canvas.invertX(@width/2)
 		super (x-@w/2), @w
 		@distance?.set(x, Math.round(x)+" km")
 		
